@@ -1,0 +1,149 @@
+#Makefile with the options specific to the build of a non-upgradable firmware with
+#the espfs combined into the flash binary.
+
+# Change tagname to some identifier that's unique for your project. 27 chars max.
+TAGNAME ?= generic
+
+# linker script used for the linker step
+
+LD_MAP_1:=0:eagle.app.v6.new.512.app1.ld 2:eagle.app.v6.new.1024.app1.ld 3:eagle.app.v6.new.2048.ld 4:eagle.app.v6.new.2048.ld 5:eagle.app.v6.new.2048.ld 6:eagle.app.v6.new.2048.ld
+LD_MAP_2:=0:eagle.app.v6.new.512.app2.ld 2:eagle.app.v6.new.1024.app2.ld 3:eagle.app.v6.new.2048.ld 4:eagle.app.v6.new.2048.ld 5:eagle.app.v6.new.2048.ld 6:eagle.app.v6.new.2048.ld
+#LD_SCRIPT_USR1	:= $(call maplookup,$(ESP_SPI_FLASH_SIZE_K),$(LD_MAP_1))
+#LD_SCRIPT_USR2	:= $(call maplookup,$(ESP_SPI_FLASH_SIZE_K),$(LD_MAP_2))
+LD_SCRIPT_USR1	:= $(call maplookup,$(SPI_SIZE_MAP),$(LD_MAP_1))
+LD_SCRIPT_USR2	:= $(call maplookup,$(SPI_SIZE_MAP),$(LD_MAP_2))
+
+TARGET_OUT_USR1 := $(addprefix $(BUILD_BASE)/,$(TARGET).user1.out)
+TARGET_OUT_USR2 := $(addprefix $(BUILD_BASE)/,$(TARGET).user2.out)
+TARGET_OUT	:=  $(TARGET_OUT_USR1) $(TARGET_OUT_USR2)
+
+TARGET_BIN_USR1 := $(addprefix $(BUILD_BASE)/,$(TARGET).user1.bin)
+TARGET_BIN_USR2 := $(addprefix $(BUILD_BASE)/,$(TARGET).user2.bin)
+TARGET_BIN	:=  $(TARGET_BIN_USR1) $(TARGET_BIN_USR2)
+TARGET_OTAFILE := $(addprefix $(BUILD_BASE)/,$(TARGET).ota)
+
+ESP_MAP := 0:512 2:1024 3:2048 4:4096 5:2048 6:4096 
+ESP_SPI_FLASH_SIZE_K := $(call maplookup,$(SPI_SIZE_MAP),$(ESP_MAP))
+
+
+ifeq ($(SPI_SIZE_MAP), 0)
+	MASTERKEYPOS = 0x3e000
+	BLANKPOS1 = 0x7b000
+	BLANKPOS2 = 0x7e000
+	INITDATAPOS = 0x7c000
+else
+	ifeq ($(SPI_SIZE_MAP), 2)
+		MASTERKEYPOS = 0x7e000
+		BLANKPOS1 = 0xfb000
+		BLANKPOS2 = 0xfe000
+		INITDATAPOS = 0xfc000
+	else
+		ifeq ($(SPI_SIZE_MAP), 3)
+			MASTERKEYPOS = 0x7e000
+			BLANKPOS1 = 0x1fb000
+			BLANKPOS2 = 0x1fe000
+			INITDATAPOS = 0x1fc000
+		else
+			ifeq ($(SPI_SIZE_MAP), 4)
+				MASTERKEYPOS = 0x7e000
+				BLANKPOS1 = 0x3fb000
+				BLANKPOS2 = 0x3fe000
+				INITDATAPOS = 0x3fc000
+			else
+				ifeq ($(SPI_SIZE_MAP), 5)
+					MASTERKEYPOS = 0xfe000
+					BLANKPOS1 = 0x1fb000
+					BLANKPOS2 = 0x1fe000
+					INITDATAPOS = 0x1fc000
+				else
+					ifeq ($(SPI_SIZE_MAP), 6)
+						MASTERKEYPOS = 0xfe000
+						BLANKPOS1 = 0x3fb000
+						BLANKPOS2 = 0x3fe000
+						INITDATAPOS = 0x3fc000
+					endif
+				endif
+			endif
+		endif
+	endif
+endif
+
+ESP_FLASH_SIZE_IX:=$(SPI_SIZE_MAP)
+
+CFLAGS += -DOTA_TAGNAME=\"$(TAGNAME)\"
+
+define genappbin
+$(1): $$(APP_AR)
+	$$(vecho) LD $$@
+	$$(Q) $$(LD) -Llibesphttpd -L$$(SDK_LIBDIR) $(2) $$(LDFLAGS) -Wl,--start-group $$(LIBS) $$(APP_AR) -Wl,--end-group -o $$@
+
+#$(3): $(1)
+#	$$(vecho) APPGEN $$@
+#	$$(Q) $$(OBJCOPY) --only-section .text -O binary $1 build/eagle.app.v6.text.bin
+#	$$(Q) $$(OBJCOPY) --only-section .data -O binary $1 build/eagle.app.v6.data.bin
+#	$$(Q) $$(OBJCOPY) --only-section .rodata -O binary $1 build/eagle.app.v6.rodata.bin
+#	$$(Q) $$(OBJCOPY) --only-section .irom0.text -O binary $1 build/eagle.app.v6.irom0text.bin
+#	$$(Q) cd build; COMPILE=gcc PATH=$$(XTENSA_TOOLS_ROOT):$$(PATH) python $$(APPGEN) $(1:build/%=%) 2 $$(ESP_FLASH_MODE) $$(ESP_FLASH_FREQ_DIV) $$(ESP_FLASH_SIZE_IX) $(4)
+#	$$(Q) rm -f eagle.app.v6.*.bin
+#	$$(Q) mv build/eagle.app.flash.bin $$@
+#	@echo "** user1.bin uses $$$$(stat -c '%s' $$@) bytes of" $$(ESP_FLASH_MAX) "available"
+$(3): $(1)
+	$$(vecho) APPGEN $$@
+	$$(Q) $$(OBJCOPY) --only-section .text -O binary $1 build/eagle.app.v6.text.bin
+	$$(Q) $$(OBJCOPY) --only-section .data -O binary $1 build/eagle.app.v6.data.bin
+	$$(Q) $$(OBJCOPY) --only-section .rodata -O binary $1 build/eagle.app.v6.rodata.bin
+	$$(Q) $$(OBJCOPY) --only-section .irom0.text -O binary $1 build/eagle.app.v6.irom0text.bin
+	$$(Q) cd build; $(APPGEN) $(1:build/%=%) 2 $$(ESP_FLASH_MODE) $$(ESP_FLASH_FREQ_DIV) $$(ESP_FLASH_SIZE_IX) $(4)
+	$$(Q) rm -f eagle.app.v6.*.bin
+	$$(Q) mv build/eagle.app.flash.bin $$@
+#	@echo "** user1.bin uses $$$$(stat -c '%s' $$@) bytes of" $$(ESP_FLASH_MAX) "available"
+	@echo "** $$@ uses $$$$(stat -c '%s' $$@) bytes of" $$(ESP_FLASH_MAX) "available"
+endef
+
+$(eval $(call genappbin,$(TARGET_OUT_USR1),$$(LD_SCRIPT_USR1),$$(TARGET_BIN_USR1),1))
+$(eval $(call genappbin,$(TARGET_OUT_USR2),$$(LD_SCRIPT_USR2),$$(TARGET_BIN_USR2),2))
+
+.PHONY: ldscript_memspecific.ld
+
+ldscript_memspecific.ld:
+	$(vecho) "GEN $@"
+	$(Q) echo "MEMORY { irom0_0_seg : org = 0x40240000, len = "$$(printf "0x%X" $$(($(ESP_SPI_FLASH_SIZE_K)*1024-0x4000)))" }"> ldscript_memspecific.ld
+
+
+#define makeuser
+#$1: $(APP_AR)
+#	$(vecho) "LD $@"
+#	$(Q) $(LD) -Llibesphttpd -L$(SDK_LIBDIR) $(LD_SCRIPT) $(EXTRA_LD_SCRIPTS) $(LDFLAGS) -Wl,--start-group $(LIBS) $(APP_AR) -Wl,--end-group -o $@ 
+#	$(Q) $(OBJCP) --only-section .text -O binary $2 build/eagle.app.v6.text.bin
+#	$(Q) $(OBJCP) --only-section .data -O binary $2 build/eagle.app.v6.data.bin
+#	$(Q) $(OBJCP) --only-section .rodata -O binary $2 build/eagle.app.v6.rodata.bin
+#	$(Q) $(OBJCP) --only-section .irom0.text -O binary $2 build/eagle.app.v6.irom0text.bin
+#	ls -ls build/eagle*bin
+#	$(Q) COMPILE=gcc PATH=$(XTENSA_TOOLS_ROOT):$(PATH) python $(APPGEN_TOOL) $(USER1_OUT) 2 $(ESP_FLASH_MODE) $(ESP_FLASH_FREQ_DIV) $(ESP_SPI_SIZE)
+#	$(Q) rm -f eagle.app.v6.*.bin
+#	$(Q) mv eagle.app.flash.bin $@
+#	@echo "** user1.bin uses $$(stat -c '%s' $@) bytes of" $(ESP_FLASH_MAX) "available"
+#	$(Q) if [ $$(stat -c '%s' $@) -gt $$(( $(ESP_FLASH_MAX) )) ]; then echo "$@ too big!"; false; fi
+#endef
+
+
+#user1.bin:
+#	$(call makeuser,user1.bin,1)
+
+# libesphttpd/mkupgimg/
+libesphttpd/mkupgimg/mkupgimg:
+	$(MAKE) -C libesphttpd/mkupgimg/
+
+$(FW_BASE): $(TARGET_BIN) libesphttpd/mkupgimg/mkupgimg
+	$(Q) libesphttpd/mkupgimg/mkupgimg $(TARGET_BIN_USR1) $(TARGET_BIN_USR2) $(TAGNAME) $(TARGET_OTAFILE)
+
+# $(TARGET_OUT) $(FW_BASE)
+flash:
+	$(Q) $(ESPTOOL) $(ESPTOOL_OPTS) write_flash $(ESPTOOL_FLASHDEF) 0x00000 $(SDK_BASE)/bin/boot_v1.6.bin 0x1000 $(TARGET_BIN_USR1)
+
+blankflash:
+	$(Q) $(ESPTOOL) $(ESPTOOL_OPTS) write_flash $(ESPTOOL_FLASHDEF) $(BLANKPOS1) $(SDK_BASE)/bin/blank.bin $(BLANKPOS2) $(SDK_BASE)/bin/blank.bin $(INITDATAPOS) $(SDK_BASE)/bin/esp_init_data_default.bin
+
+eraseflash:
+	$(Q) $(ESPTOOL) $(ESPTOOL_OPTS) erase_flash
+
