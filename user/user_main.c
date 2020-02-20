@@ -440,10 +440,10 @@ void ICACHE_FLASH_ATTR user_init(void)
 	/* init I2C for oled ssd1306 */
 	i2c_master_gpio_init ();
 
-/*	display_init(I2C_ADDR);
+	display_init(I2C_ADDR);
 	os_delay_us(5000);
 	display_clear();
-	display_update();*/
+	display_update();
 
 	/* init pin for hot water, cold water and external power */
 	if (set_gpio_mode(HOT_PIN, GPIO_INPUT, GPIO_PULLUP)) {

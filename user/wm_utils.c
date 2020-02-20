@@ -18,8 +18,6 @@ uint32_t timeStart;
 
 void ICACHE_FLASH_ATTR displayUpdate() {
 
-	return;
-
 	char buf[11];
 
 	displayWrite = false;

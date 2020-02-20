@@ -50,12 +50,12 @@
 		</cconfiguration>
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-		<project id="watermeter.null.1347473968" name="watermeter"/>
+		<project id="watermeter2.null.1347473968" name="watermeter2"/>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Default">
-			<resource resourceType="PROJECT" workspacePath="/watermeter"/>
+			<resource resourceType="PROJECT" workspacePath="/watermeter2"/>
 		</configuration>
 	</storageModule>
 	<storageModule moduleId="scannerConfiguration">
